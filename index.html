@@ -27,7 +27,7 @@
         <div class="flex items-center space-x-4 text-sm">
             <div id="engine-status" class="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded border border-slate-700">
                 <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                <span id="status-text" class="font-medium text-slate-300">Booting SF18...</span>
+                <span id="status-text" class="font-medium text-slate-300">Initializing SF18...</span>
             </div>
         </div>
     </header>
@@ -78,7 +78,7 @@
                     </div>
                     <div>
                         <span class="text-slate-400 block mb-1">Principal Variation:</span>
-                        <div id="engine-pv" class="bg-slate-900 p-2.5 rounded font-mono text-xs text-slate-300 border border-slate-700 min-h-[48px] max-h-24 overflow-y-auto">Waiting for Stockfish 18 worker...</div>
+                        <div id="engine-pv" class="bg-slate-900 p-2.5 rounded font-mono text-xs text-slate-300 border border-slate-700 min-h-[48px] max-h-24 overflow-y-auto">Waiting for Stockfish 18 background worker...</div>
                     </div>
                 </div>
             </div>
@@ -127,8 +127,10 @@
 
         function initStockfish() {
             try {
-                // Direct worker setup targeting the exact Stockfish 18 WebAssembly CDN package
-                stockfish = new Worker('https://cdn.jsdelivr.net/npm/stockfish@18.0.8/stockfish-18-lite-single.js');
+                // Bypass browser CORS security walls on web workers by importing via a safe Blob wrapper URL
+                const jsCode = `importScripts('https://cdn.jsdelivr.net/npm/stockfish@18.0.8/stockfish-18-lite-single.js');`;
+                const blob = new Blob([jsCode], { type: 'application/javascript' });
+                stockfish = new Worker(URL.createObjectURL(blob));
 
                 stockfish.onmessage = function(event) {
                     parseEngineMessage(event.data);
@@ -138,7 +140,7 @@
                 stockfish.postMessage('isready');
             } catch (e) {
                 document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
-                document.getElementById('status-text').textContent = 'SF18 Load Error';
+                document.getElementById('status-text').textContent = 'SF18 Blocked';
             }
         }
 
@@ -188,7 +190,7 @@
             if (!stockfish) return;
             stockfish.postMessage('stop');
             stockfish.postMessage(`position fen ${game.fen()}`);
-            stockfish.postMessage('go depth 15');
+            stockfish.postMessage('go depth 16');
         }
 
         function updateEvalBar(evalFloat) {
