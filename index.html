@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHESSWARE - Stockfish 18</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .square-light { background-color: #f0d9b5; }
+        .square-dark { background-color: #b58863; }
+        .selected-square { background-color: #baca44 !important; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-3">
+            <span class="text-2xl font-black tracking-wider text-indigo-400">CHESSWARE</span>
+            <span class="text-xs uppercase bg-indigo-900 text-indigo-200 px-2 py-0.5 rounded font-semibold">Stockfish 18</span>
+        </div>
+        <div class="flex items-center space-x-4 text-sm">
+            <div id="engine-status" class="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded border border-slate-700">
+                <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span id="status-text" class="font-medium text-slate-300">Booting SF18...</span>
+            </div>
+        </div>
+    </header>
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <section class="lg:col-span-7 flex flex-col items-center">
+            <div class="flex w-full max-w-[520px] bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-xl space-x-4 items-center">
+                <div class="w-6 h-[480px] bg-slate-900 rounded overflow-hidden flex flex-col justify-end border border-slate-700 relative">
+                    <div id="eval-fill" class="bg-slate-200 w-full transition-all duration-300" style="height: 50%;"></div>
+                    <span id="eval-number" class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-900 bg-slate-200/80">+0.00</span>
+                </div>
+                <div id="custom-board" class="w-[480px] h-[480px] grid grid-cols-8 grid-rows-8 border-4 border-slate-700 rounded shadow-lg select-none"></div>
+            </div>
+        </section>
+        <section class="lg:col-span-5 flex flex-col space-y-6">
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl flex flex-col space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                    <h2 class="font-bold text-indigo-400">Stockfish 18 Analysis</h2>
+                    <span id="engine-depth" class="text-xs bg-slate-900 px-2 py-1 rounded text-slate-300 border border-slate-700">Depth: 0</span>
+                </div>
+                <div class="text-sm space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Best Move:</span>
+                        <span id="engine-bestmove" class="font-mono font-bold text-emerald-400">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block mb-1">Principal Variation:</span>
+                        <div id="engine-pv" class="bg-slate-900 p-2.5 rounded font-mono text-xs text-slate-300 border border-slate-700 min-h-[48px] max-h-24 overflow-y-auto">Waiting for engine worker...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script>
+        const game = new Chess();
+        let isFlipped = false, selectedSquare = null, stockfish = null;
+        const customBoard = document.getElementById('custom-board');
+        const pieceSymbols = {'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙', 'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♙'};
+
+        function initStockfish() {
+            try {
+                stockfish = new Worker('https://cdn.jsdelivr.net/npm/stockfish@18.0.8/stockfish-18-lite-single.js');
+                stockfish.onmessage = (e) => parseEngineMessage(e.data);
+                stockfish.postMessage('uci');
+                stockfish.postMessage('isready');
+            } catch (err) {
+                document.getElementById('status-text').textContent = 'Engine Error';
+            }
+        }
+        function parseEngineMessage(msg) {
+            if (msg === 'readyok') {
+                document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+                document.getElementById('status-text').textContent = 'Stockfish 18 Ready';
+                stockfish.postMessage(`position fen ${game.fen()}`);
+                stockfish.postMessage('go depth 15');
+            }
+            if (typeof msg === 'string' && msg.includes('pv')) {
+                let d = msg.match(/depth\s+(\d+)/), s = msg.match(/score\s+(cp|mate)\s+(-?\d+)/), pv = msg.match(/pv\s+(.*)/);
+                if (d) document.getElementById('engine-depth').textContent = `Depth: ${d[1]}`;
+                if (s) {
+                    let val = parseInt(s[2], 10) / (s[1] === 'cp' ? 100 : 1);
+                    document.getElementById('eval-number').textContent = (val >= 0 ? '+' : '') + val.toFixed(2);
+                }
+                if (pv) document.getElementById('engine-bestmove').textContent = pv[1].split(' ')[0];
+                if (pv) document.getElementById('engine-pv').textContent = pv[1];
+            }
+        }
+        function renderBoard() {
+            customBoard.innerHTML = '';
+            let b = game.board();
+            for (let r = 0; r < 8; r++) {
+                for (let f = 0; f < 8; f++) {
+                    let sq = ['a','b','c','d','e','f','g','h'][f] + ['8','7','6','5','4','3','2','1'][r];
+                    let el = document.createElement('div');
+                    el.className = `w-full h-full flex items-center justify-center text-4xl cursor-pointer ${(r+f)%2===0?'bg-[#f0d9b5]':'bg-[#b58863]'}`;
+                    if (selectedSquare === sq) el.style.backgroundColor = '#baca44';
+                    let p = b[r][f];
+                    if (p) el.textContent = pieceSymbols[p.color + p.type.toUpperCase()];
+                    el.onclick = () => {
+                        if (!selectedSquare && p && p.color === game.turn()) { selectedSquare = sq; renderBoard(); }
+                        else if (selectedSquare) {
+                            if (game.move({from: selectedSquare, to: sq, promotion: 'q'})) {
+                                selectedSquare = null; renderBoard();
+                                if (stockfish) { stockfish.postMessage(`position fen ${game.fen()}`); stockfish.postMessage('go depth 15'); }
+                            } else { selectedSquare = null; renderBoard(); }
+                        }
+                    };
+                    customBoard.appendChild(el);
+                }
+            }
+        }
+        $(document).ready(() => { renderBoard(); initStockfish(); });
+    </script>
+</body>
+</html>
