@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHESSWARE - Stockfish 18 Analysis</title>
+    <title>CHESSWARE - Stockfish 18</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chess.js -->
@@ -26,8 +26,8 @@
         </div>
         <div class="flex items-center space-x-4 text-sm">
             <div id="engine-status" class="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded border border-slate-700">
-                <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span id="status-text" class="font-medium text-slate-300">Engine Ready</span>
+                <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span id="status-text" class="font-medium text-slate-300">Loading SF18...</span>
             </div>
         </div>
     </header>
@@ -41,7 +41,7 @@
                 <!-- Evaluation Bar -->
                 <div class="w-6 h-[480px] bg-slate-900 rounded overflow-hidden flex flex-col justify-end border border-slate-700 relative">
                     <div id="eval-fill" class="bg-slate-200 w-full transition-all duration-300" style="height: 50%;"></div>
-                    <span id="eval-number" class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-900 bg-slate-200/80 rotate-90 sm:rotate-0">+0.00</span>
+                    <span id="eval-number" class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-900 bg-slate-200/80">+0.00</span>
                 </div>
                 <!-- Native Custom Chessboard Grid Container -->
                 <div id="custom-board" class="w-[480px] h-[480px] grid grid-cols-8 grid-rows-8 border-4 border-slate-700 rounded shadow-lg select-none"></div>
@@ -68,8 +68,8 @@
             <!-- Engine Telemetry & Analysis Panel -->
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl flex flex-col space-y-3">
                 <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                    <h2 class="font-bold text-indigo-400">Position Analysis (White POV)</h2>
-                    <span id="engine-depth" class="text-xs bg-slate-900 px-2 py-1 rounded text-slate-300 border border-slate-700">Depth: 3</span>
+                    <h2 class="font-bold text-indigo-400">Stockfish 18 Analysis</h2>
+                    <span id="engine-depth" class="text-xs bg-slate-900 px-2 py-1 rounded text-slate-300 border border-slate-700">Depth: 0</span>
                 </div>
                 <div class="text-sm space-y-2">
                     <div class="flex justify-between">
@@ -77,8 +77,8 @@
                         <span id="engine-bestmove" class="font-mono font-bold text-emerald-400">-</span>
                     </div>
                     <div>
-                        <span class="text-slate-400 block mb-1">Evaluation Line:</span>
-                        <div id="engine-pv" class="bg-slate-900 p-2.5 rounded font-mono text-xs text-slate-300 border border-slate-700 min-h-[48px] max-h-24 overflow-y-auto">Ready for analysis. Make a move or load a position.</div>
+                        <span class="text-slate-400 block mb-1">Principal Variation:</span>
+                        <div id="engine-pv" class="bg-slate-900 p-2.5 rounded font-mono text-xs text-slate-300 border border-slate-700 min-h-[48px] max-h-24 overflow-y-auto">Initializing Stockfish 18 worker thread...</div>
                     </div>
                 </div>
             </div>
@@ -110,6 +110,7 @@
         let currentHistoryIndex = 0;
         let isFlipped = false;
         let selectedSquare = null;
+        let stockfish = null;
 
         const pieceSymbols = {
             'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
@@ -124,96 +125,77 @@
         const moveHistoryContainer = document.getElementById('move-history');
         const customBoard = document.getElementById('custom-board');
 
-        const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+        function initStockfish() {
+            try {
+                // Safely load Stockfish 18 worker via blob URL to bypass cross-origin worker restrictions on GitHub Pages / local files
+                const workerScript = `importScripts('https://cdn.jsdelivr.net/npm/stockfish@18.0.8/stockfish-18-lite-single.js');`;
+                const blob = new Blob([workerScript], { type: 'application/javascript' });
+                stockfish = new Worker(URL.createObjectURL(blob));
 
-        function evaluateBoard(chessInstance) {
-            let totalEvaluation = 0;
-            const board = chessInstance.board();
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = board[r][c];
-                    if (piece) {
-                        const val = pieceValues[piece.type];
-                        totalEvaluation += (piece.color === 'w') ? val : -val;
-                    }
-                }
-            }
-            return totalEvaluation;
-        }
+                stockfish.onmessage = function(event) {
+                    parseEngineMessage(event.data);
+                };
 
-        function minimax(chessInstance, depth, alpha, beta, isMaximizing) {
-            if (depth === 0 || chessInstance.game_over()) {
-                return evaluateBoard(chessInstance);
-            }
-            const moves = chessInstance.moves();
-            if (isMaximizing) {
-                let maxEval = -Infinity;
-                for (let i = 0; i < moves.length; i++) {
-                    chessInstance.move(moves[i]);
-                    let evaluation = minimax(chessInstance, depth - 1, alpha, beta, false);
-                    chessInstance.undo();
-                    maxEval = Math.max(maxEval, evaluation);
-                    alpha = Math.max(alpha, evaluation);
-                    if (beta <= alpha) break;
-                }
-                return maxEval;
-            } else {
-                let minEval = Infinity;
-                for (let i = 0; i < moves.length; i++) {
-                    chessInstance.move(moves[i]);
-                    let evaluation = minimax(chessInstance, depth - 1, alpha, beta, true);
-                    chessInstance.undo();
-                    minEval = Math.min(minEval, evaluation);
-                    beta = Math.min(beta, evaluation);
-                    if (beta <= alpha) break;
-                }
-                return minEval;
+                stockfish.postMessage('uci');
+                stockfish.postMessage('isready');
+            } catch (e) {
+                document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+                document.getElementById('status-text').textContent = 'SF18 Worker Failed';
             }
         }
 
-        function triggerAnalysis() {
-            if (game.game_over()) {
-                engineBestmove.textContent = "Game Over";
-                enginePv.textContent = "Position concluded.";
-                return;
+        function parseEngineMessage(msg) {
+            if (typeof msg !== 'string') return;
+
+            if (msg === 'readyok') {
+                document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+                document.getElementById('status-text').textContent = 'Stockfish 18 Ready';
+                updateEnginePosition();
             }
-            const moves = game.moves();
-            if (moves.length === 0) return;
 
-            let bestMove = moves[0];
-            let bestValue = game.turn() === 'w' ? -Infinity : Infinity;
-            const isMaximizing = (game.turn() === 'w');
+            if (msg.includes('pv') || msg.includes('score')) {
+                let depthMatch = msg.match(/depth\s+(\d+)/);
+                let scoreMatch = msg.match(/score\s+(cp|mate)\s+(-?\d+)/);
+                let pvMatch = msg.match(/pv\s+(.*)/);
 
-            for (let i = 0; i < moves.length; i++) {
-                game.move(moves[i]);
-                let value = minimax(game, 2, -Infinity, Infinity, !isMaximizing);
-                game.undo();
+                if (depthMatch) {
+                    engineDepth.textContent = `Depth: ${depthMatch[1]}`;
+                }
 
-                if (isMaximizing) {
-                    if (value > bestValue) {
-                        bestValue = value;
-                        bestMove = moves[i];
+                if (scoreMatch) {
+                    let scoreType = scoreMatch[1];
+                    let scoreVal = parseInt(scoreMatch[2], 10);
+                    let formattedScore = '';
+
+                    if (scoreType === 'cp') {
+                        let evalFloat = scoreVal / 100.0;
+                        formattedScore = (evalFloat >= 0 ? '+' : '') + evalFloat.toFixed(2);
+                        updateEvalBar(evalFloat);
+                    } else if (scoreType === 'mate') {
+                        formattedScore = `Mate in ${Math.abs(scoreVal)}`;
+                        updateEvalBar(scoreVal > 0 ? 10 : -10);
                     }
-                } else {
-                    if (value < bestValue) {
-                        bestValue = value;
-                        bestMove = moves[i];
-                    }
+                    evalNumber.textContent = formattedScore;
+                }
+
+                if (pvMatch) {
+                    let pvMoves = pvMatch[1].split(' ');
+                    engineBestmove.textContent = pvMoves[0];
+                    enginePv.textContent = pvMatch[1];
                 }
             }
-
-            engineBestmove.textContent = bestMove;
-            enginePv.textContent = `${bestMove} (Active analysis evaluation)`;
-
-            let evalScore = bestValue / 100.0;
-            let evalText = (evalScore >= 0 ? '+' : '') + evalScore.toFixed(2);
-            updateEvaluationDisplay(evalScore, evalText);
         }
 
-        function updateEvaluationDisplay(evalScore, evalText) {
-            evalNumber.textContent = evalText;
-            let winRate = 1 / (1 + Math.pow(10, -evalScore / 4.0));
-            let percentage = Math.max(2, Math.min(98, winRate * 100));
+        function updateEnginePosition() {
+            if (!stockfish) return;
+            stockfish.postMessage('stop');
+            stockfish.postMessage(`position fen ${game.fen()}`);
+            stockfish.postMessage('go depth 16');
+        }
+
+        function updateEvalBar(evalFloat) {
+            let winRate = 1 / (1 + Math.pow(10, -evalFloat / 4.0));
+            let percentage = Math.max(3, Math.min(97, winRate * 100));
             evalFill.style.height = `${percentage}%`;
         }
 
@@ -231,8 +213,7 @@
                     
                     const squareEl = document.createElement('div');
                     squareEl.className = `w-full h-full flex items-center justify-center text-4xl cursor-pointer relative ${(r + f) % 2 === 0 ? 'square-light' : 'square-dark'}`;
-                    squareEl.dataset.square = squareName;
-
+                    
                     if (selectedSquare === squareName) {
                         squareEl.classList.add('selected-square');
                     }
@@ -243,7 +224,6 @@
                         const pieceSpan = document.createElement('span');
                         pieceSpan.textContent = pieceSymbols[pieceKey];
                         
-                        // Fix for coloring pieces correctly
                         if (piece.color === 'w') {
                             pieceSpan.style.color = '#ffffff';
                             pieceSpan.style.textShadow = '0 1px 2px rgba(0,0,0,0.8)';
@@ -294,7 +274,7 @@
                 currentHistoryIndex = historyStates.length - 1;
                 renderBoard();
                 updateMoveHistory();
-                triggerAnalysis();
+                updateEnginePosition();
             }
         }
 
@@ -325,12 +305,12 @@
             selectedSquare = null;
             renderBoard();
             updateMoveHistory();
-            triggerAnalysis();
+            updateEnginePosition();
         };
 
         $(document).ready(() => {
             renderBoard();
-            triggerAnalysis();
+            initStockfish();
 
             $('#btn-start').click(() => jumpToPly(0));
             $('#btn-prev').click(() => jumpToPly(currentHistoryIndex - 1));
@@ -343,7 +323,7 @@
                 selectedSquare = null;
                 renderBoard();
                 updateMoveHistory();
-                triggerAnalysis();
+                updateEnginePosition();
             });
             $('#btn-flip').click(() => {
                 isFlipped = !isFlipped;
@@ -367,7 +347,7 @@
                     selectedSquare = null;
                     renderBoard();
                     updateMoveHistory();
-                    triggerAnalysis();
+                    updateEnginePosition();
                     $('#load-fen-input').val('');
                 } else {
                     alert('Invalid FEN/PGN string.');
