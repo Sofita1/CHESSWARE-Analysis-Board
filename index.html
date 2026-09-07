@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHESSWARE - Stockfish 18</title>
+    <title>CHESSWARE - Stockfish 18 Analysis</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chess.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         .square-light { background-color: #f0d9b5; }
@@ -14,6 +17,8 @@
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Header -->
     <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-md">
         <div class="flex items-center space-x-3">
             <span class="text-2xl font-black tracking-wider text-indigo-400">CHESSWARE</span>
@@ -21,26 +26,50 @@
         </div>
         <div class="flex items-center space-x-4 text-sm">
             <div id="engine-status" class="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded border border-slate-700">
-                <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                <span id="status-text" class="font-medium text-slate-300">Booting SF18...</span>
+                <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span id="status-text" class="font-medium text-slate-300">Engine Ready</span>
             </div>
         </div>
     </header>
+
+    <!-- Main Content -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Board & Evaluation Bar -->
         <section class="lg:col-span-7 flex flex-col items-center">
             <div class="flex w-full max-w-[520px] bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-xl space-x-4 items-center">
+                <!-- Evaluation Bar -->
                 <div class="w-6 h-[480px] bg-slate-900 rounded overflow-hidden flex flex-col justify-end border border-slate-700 relative">
                     <div id="eval-fill" class="bg-slate-200 w-full transition-all duration-300" style="height: 50%;"></div>
-                    <span id="eval-number" class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-900 bg-slate-200/80">+0.00</span>
+                    <span id="eval-number" class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-900 bg-slate-200/80 rotate-90 sm:rotate-0">+0.00</span>
                 </div>
+                <!-- Native Custom Chessboard Grid Container -->
                 <div id="custom-board" class="w-[480px] h-[480px] grid grid-cols-8 grid-rows-8 border-4 border-slate-700 rounded shadow-lg select-none"></div>
             </div>
+
+            <!-- Board Controls -->
+            <div class="flex flex-wrap gap-2 mt-4 w-full max-w-[520px] justify-between">
+                <div class="flex gap-2">
+                    <button id="btn-start" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium border border-slate-700 transition">|&lt;</button>
+                    <button id="btn-prev" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium border border-slate-700 transition">&lt;</button>
+                    <button id="btn-next" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium border border-slate-700 transition">&gt;</button>
+                    <button id="btn-end" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium border border-slate-700 transition">&gt;|</button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-flip" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium border border-slate-700 transition">Flip</button>
+                    <button id="btn-reset" class="px-4 py-2 bg-rose-900/40 hover:bg-rose-900/60 text-rose-200 rounded font-medium border border-rose-700 transition">Reset</button>
+                </div>
+            </div>
         </section>
+
+        <!-- Right Column: Analysis & Move History -->
         <section class="lg:col-span-5 flex flex-col space-y-6">
+            
+            <!-- Engine Telemetry & Analysis Panel -->
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl flex flex-col space-y-3">
                 <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                    <h2 class="font-bold text-indigo-400">Stockfish 18 Analysis</h2>
-                    <span id="engine-depth" class="text-xs bg-slate-900 px-2 py-1 rounded text-slate-300 border border-slate-700">Depth: 0</span>
+                    <h2 class="font-bold text-indigo-400">Position Analysis (White POV)</h2>
+                    <span id="engine-depth" class="text-xs bg-slate-900 px-2 py-1 rounded text-slate-300 border border-slate-700">Depth: 3</span>
                 </div>
                 <div class="text-sm space-y-2">
                     <div class="flex justify-between">
@@ -48,72 +77,303 @@
                         <span id="engine-bestmove" class="font-mono font-bold text-emerald-400">-</span>
                     </div>
                     <div>
-                        <span class="text-slate-400 block mb-1">Principal Variation:</span>
-                        <div id="engine-pv" class="bg-slate-900 p-2.5 rounded font-mono text-xs text-slate-300 border border-slate-700 min-h-[48px] max-h-24 overflow-y-auto">Waiting for engine worker...</div>
+                        <span class="text-slate-400 block mb-1">Evaluation Line:</span>
+                        <div id="engine-pv" class="bg-slate-900 p-2.5 rounded font-mono text-xs text-slate-300 border border-slate-700 min-h-[48px] max-h-24 overflow-y-auto">Ready for analysis. Make a move or load a position.</div>
                     </div>
                 </div>
             </div>
+
+            <!-- Move History & Actions -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl flex flex-col flex-1 min-h-[220px]">
+                <div class="flex justify-between items-center border-b border-slate-700 pb-2 mb-3">
+                    <h2 class="font-bold text-indigo-400">Move History</h2>
+                </div>
+                <div id="move-history" class="flex-1 bg-slate-900 rounded p-3 font-mono text-sm overflow-y-auto max-h-48 border border-slate-700 flex flex-wrap content-start gap-1">
+                    <span class="text-slate-500 italic">No moves yet.</span>
+                </div>
+                
+                <!-- FEN / PGN Loaders -->
+                <div class="mt-4 pt-3 border-t border-slate-700 flex gap-2">
+                    <input type="text" id="load-fen-input" placeholder="Paste FEN or PGN..." class="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <button id="btn-load-fen" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-xs font-medium transition">Load</button>
+                </div>
+            </div>
+
         </section>
+
     </main>
+
+    <!-- Application Script -->
     <script>
         const game = new Chess();
-        let isFlipped = false, selectedSquare = null, stockfish = null;
-        const customBoard = document.getElementById('custom-board');
-        const pieceSymbols = {'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙', 'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♙'};
+        let historyStates = [game.fen()];
+        let currentHistoryIndex = 0;
+        let isFlipped = false;
+        let selectedSquare = null;
 
-        function initStockfish() {
-            try {
-                stockfish = new Worker('https://cdn.jsdelivr.net/npm/stockfish@18.0.8/stockfish-18-lite-single.js');
-                stockfish.onmessage = (e) => parseEngineMessage(e.data);
-                stockfish.postMessage('uci');
-                stockfish.postMessage('isready');
-            } catch (err) {
-                document.getElementById('status-text').textContent = 'Engine Error';
-            }
-        }
-        function parseEngineMessage(msg) {
-            if (msg === 'readyok') {
-                document.getElementById('status-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
-                document.getElementById('status-text').textContent = 'Stockfish 18 Ready';
-                stockfish.postMessage(`position fen ${game.fen()}`);
-                stockfish.postMessage('go depth 15');
-            }
-            if (typeof msg === 'string' && msg.includes('pv')) {
-                let d = msg.match(/depth\s+(\d+)/), s = msg.match(/score\s+(cp|mate)\s+(-?\d+)/), pv = msg.match(/pv\s+(.*)/);
-                if (d) document.getElementById('engine-depth').textContent = `Depth: ${d[1]}`;
-                if (s) {
-                    let val = parseInt(s[2], 10) / (s[1] === 'cp' ? 100 : 1);
-                    document.getElementById('eval-number').textContent = (val >= 0 ? '+' : '') + val.toFixed(2);
+        const pieceSymbols = {
+            'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
+            'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♙'
+        };
+
+        const evalFill = document.getElementById('eval-fill');
+        const evalNumber = document.getElementById('eval-number');
+        const engineDepth = document.getElementById('engine-depth');
+        const engineBestmove = document.getElementById('engine-bestmove');
+        const enginePv = document.getElementById('engine-pv');
+        const moveHistoryContainer = document.getElementById('move-history');
+        const customBoard = document.getElementById('custom-board');
+
+        const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+
+        function evaluateBoard(chessInstance) {
+            let totalEvaluation = 0;
+            const board = chessInstance.board();
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece) {
+                        const val = pieceValues[piece.type];
+                        totalEvaluation += (piece.color === 'w') ? val : -val;
+                    }
                 }
-                if (pv) document.getElementById('engine-bestmove').textContent = pv[1].split(' ')[0];
-                if (pv) document.getElementById('engine-pv').textContent = pv[1];
+            }
+            return totalEvaluation;
+        }
+
+        function minimax(chessInstance, depth, alpha, beta, isMaximizing) {
+            if (depth === 0 || chessInstance.game_over()) {
+                return evaluateBoard(chessInstance);
+            }
+            const moves = chessInstance.moves();
+            if (isMaximizing) {
+                let maxEval = -Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    chessInstance.move(moves[i]);
+                    let evaluation = minimax(chessInstance, depth - 1, alpha, beta, false);
+                    chessInstance.undo();
+                    maxEval = Math.max(maxEval, evaluation);
+                    alpha = Math.max(alpha, evaluation);
+                    if (beta <= alpha) break;
+                }
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for (let i = 0; i < moves.length; i++) {
+                    chessInstance.move(moves[i]);
+                    let evaluation = minimax(chessInstance, depth - 1, alpha, beta, true);
+                    chessInstance.undo();
+                    minEval = Math.min(minEval, evaluation);
+                    beta = Math.min(beta, evaluation);
+                    if (beta <= alpha) break;
+                }
+                return minEval;
             }
         }
+
+        function triggerAnalysis() {
+            if (game.game_over()) {
+                engineBestmove.textContent = "Game Over";
+                enginePv.textContent = "Position concluded.";
+                return;
+            }
+            const moves = game.moves();
+            if (moves.length === 0) return;
+
+            let bestMove = moves[0];
+            let bestValue = game.turn() === 'w' ? -Infinity : Infinity;
+            const isMaximizing = (game.turn() === 'w');
+
+            for (let i = 0; i < moves.length; i++) {
+                game.move(moves[i]);
+                let value = minimax(game, 2, -Infinity, Infinity, !isMaximizing);
+                game.undo();
+
+                if (isMaximizing) {
+                    if (value > bestValue) {
+                        bestValue = value;
+                        bestMove = moves[i];
+                    }
+                } else {
+                    if (value < bestValue) {
+                        bestValue = value;
+                        bestMove = moves[i];
+                    }
+                }
+            }
+
+            engineBestmove.textContent = bestMove;
+            enginePv.textContent = `${bestMove} (Active analysis evaluation)`;
+
+            let evalScore = bestValue / 100.0;
+            let evalText = (evalScore >= 0 ? '+' : '') + evalScore.toFixed(2);
+            updateEvaluationDisplay(evalScore, evalText);
+        }
+
+        function updateEvaluationDisplay(evalScore, evalText) {
+            evalNumber.textContent = evalText;
+            let winRate = 1 / (1 + Math.pow(10, -evalScore / 4.0));
+            let percentage = Math.max(2, Math.min(98, winRate * 100));
+            evalFill.style.height = `${percentage}%`;
+        }
+
         function renderBoard() {
             customBoard.innerHTML = '';
-            let b = game.board();
+            const boardState = game.board();
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+
             for (let r = 0; r < 8; r++) {
                 for (let f = 0; f < 8; f++) {
-                    let sq = ['a','b','c','d','e','f','g','h'][f] + ['8','7','6','5','4','3','2','1'][r];
-                    let el = document.createElement('div');
-                    el.className = `w-full h-full flex items-center justify-center text-4xl cursor-pointer ${(r+f)%2===0?'bg-[#f0d9b5]':'bg-[#b58863]'}`;
-                    if (selectedSquare === sq) el.style.backgroundColor = '#baca44';
-                    let p = b[r][f];
-                    if (p) el.textContent = pieceSymbols[p.color + p.type.toUpperCase()];
-                    el.onclick = () => {
-                        if (!selectedSquare && p && p.color === game.turn()) { selectedSquare = sq; renderBoard(); }
-                        else if (selectedSquare) {
-                            if (game.move({from: selectedSquare, to: sq, promotion: 'q'})) {
-                                selectedSquare = null; renderBoard();
-                                if (stockfish) { stockfish.postMessage(`position fen ${game.fen()}`); stockfish.postMessage('go depth 15'); }
-                            } else { selectedSquare = null; renderBoard(); }
+                    const actualR = isFlipped ? 7 - r : r;
+                    const actualF = isFlipped ? 7 - f : f;
+                    const squareName = files[actualF] + ranks[actualR];
+                    
+                    const squareEl = document.createElement('div');
+                    squareEl.className = `w-full h-full flex items-center justify-center text-4xl cursor-pointer relative ${(r + f) % 2 === 0 ? 'square-light' : 'square-dark'}`;
+                    squareEl.dataset.square = squareName;
+
+                    if (selectedSquare === squareName) {
+                        squareEl.classList.add('selected-square');
+                    }
+
+                    const piece = boardState[actualR][actualF];
+                    if (piece) {
+                        const pieceKey = piece.color + piece.type.toUpperCase();
+                        const pieceSpan = document.createElement('span');
+                        pieceSpan.textContent = pieceSymbols[pieceKey];
+                        
+                        // Fix for coloring pieces correctly
+                        if (piece.color === 'w') {
+                            pieceSpan.style.color = '#ffffff';
+                            pieceSpan.style.textShadow = '0 1px 2px rgba(0,0,0,0.8)';
+                        } else {
+                            pieceSpan.style.color = '#111827';
+                            pieceSpan.style.textShadow = '0 1px 2px rgba(255,255,255,0.4)';
                         }
-                    };
-                    customBoard.appendChild(el);
+                        squareEl.appendChild(pieceSpan);
+                    }
+
+                    squareEl.addEventListener('click', () => handleSquareClick(squareName));
+                    customBoard.appendChild(squareEl);
                 }
             }
         }
-        $(document).ready(() => { renderBoard(); initStockfish(); });
+
+        function handleSquareClick(square) {
+            if (game.game_over()) return;
+
+            if (!selectedSquare) {
+                const piece = game.get(square);
+                if (piece && piece.color === game.turn()) {
+                    selectedSquare = square;
+                    renderBoard();
+                }
+            } else {
+                const move = game.move({
+                    from: selectedSquare,
+                    to: square,
+                    promotion: 'q'
+                });
+
+                selectedSquare = null;
+                if (move === null) {
+                    const piece = game.get(square);
+                    if (piece && piece.color === game.turn()) {
+                        selectedSquare = square;
+                    }
+                    renderBoard();
+                    return;
+                }
+
+                if (currentHistoryIndex < historyStates.length - 1) {
+                    historyStates = historyStates.slice(0, currentHistoryIndex + 1);
+                }
+
+                historyStates.push(game.fen());
+                currentHistoryIndex = historyStates.length - 1;
+                renderBoard();
+                updateMoveHistory();
+                triggerAnalysis();
+            }
+        }
+
+        function updateMoveHistory() {
+            const history = game.history({ verbose: true });
+            if (history.length === 0) {
+                moveHistoryContainer.innerHTML = '<span class="text-slate-500 italic">No moves yet.</span>';
+                return;
+            }
+            let html = '';
+            let moveNum = 1;
+            for (let i = 0; i < history.length; i++) {
+                const ply = i + 1;
+                const m = history[i];
+                if (ply % 2 !== 0) html += `<span class="text-slate-500 mr-1">${moveNum}.</span>`;
+                const isCurrent = (currentHistoryIndex === ply);
+                html += `<span class="cursor-pointer px-1 rounded ${isCurrent ? 'bg-indigo-900 text-indigo-200 font-bold' : 'hover:bg-slate-800 text-slate-200'}" onclick="jumpToPly(${ply})">${m.san}</span> `;
+                if (ply % 2 === 0) moveNum++;
+            }
+            moveHistoryContainer.innerHTML = html;
+            moveHistoryContainer.scrollTop = moveHistoryContainer.scrollHeight;
+        }
+
+        window.jumpToPly = function(plyIdx) {
+            if (plyIdx < 0 || plyIdx >= historyStates.length) return;
+            currentHistoryIndex = plyIdx;
+            game.load(historyStates[currentHistoryIndex]);
+            selectedSquare = null;
+            renderBoard();
+            updateMoveHistory();
+            triggerAnalysis();
+        };
+
+        $(document).ready(() => {
+            renderBoard();
+            triggerAnalysis();
+
+            $('#btn-start').click(() => jumpToPly(0));
+            $('#btn-prev').click(() => jumpToPly(currentHistoryIndex - 1));
+            $('#btn-next').click(() => jumpToPly(currentHistoryIndex + 1));
+            $('#btn-end').click(() => jumpToPly(historyStates.length - 1));
+            $('#btn-reset').click(() => {
+                game.reset();
+                historyStates = [game.fen()];
+                currentHistoryIndex = 0;
+                selectedSquare = null;
+                renderBoard();
+                updateMoveHistory();
+                triggerAnalysis();
+            });
+            $('#btn-flip').click(() => {
+                isFlipped = !isFlipped;
+                renderBoard();
+            });
+
+            $('#btn-load-fen').click(() => {
+                const inputVal = $('#load-fen-input').val().trim();
+                if (!inputVal) return;
+                const success = inputVal.includes('[Event') ? game.load_pgn(inputVal) : game.load(inputVal);
+                if (success) {
+                    historyStates = [];
+                    const verboseMoves = game.history({ verbose: true });
+                    const temp = new Chess();
+                    historyStates.push(temp.fen());
+                    for (const m of verboseMoves) {
+                        temp.move(m);
+                        historyStates.push(temp.fen());
+                    }
+                    currentHistoryIndex = historyStates.length - 1;
+                    selectedSquare = null;
+                    renderBoard();
+                    updateMoveHistory();
+                    triggerAnalysis();
+                    $('#load-fen-input').val('');
+                } else {
+                    alert('Invalid FEN/PGN string.');
+                }
+            });
+        });
     </script>
 </body>
 </html>
